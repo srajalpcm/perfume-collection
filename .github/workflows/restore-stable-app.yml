@@ -1,0 +1,34 @@
+name: Restore stable app
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: ${{ !contains(github.event.head_commit.message, '[stable-restore]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore known-good app
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/srajalpcm/perfume-collection/9b1d0b969e23979797aa7351dcd04187026dbd3b/index.html" -o index.html
+          sed -i '/<script src="\.\/edit-fix\.js/d' index.html
+          printf '\n<script src="./edit-fix.js?v=stable"></script>\n' >> index.html
+
+      - name: Commit restored app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No restoration needed"
+            exit 0
+          fi
+          git commit -m "Restore stable app [stable-restore]"
+          git push
