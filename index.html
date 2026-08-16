@@ -5,31 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>My Perfume Collection</title>
 <style>
-html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f7f3ed;color:#211d19}
-#loading{min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center}
-#loading .box{max-width:420px;background:#fffdf9;border:1px solid #e7dfd5;border-radius:20px;padding:28px;box-shadow:0 12px 35px rgba(44,31,22,.08)}
-#loading strong{display:block;font-size:20px;margin-bottom:8px}#loading span{color:#7b726a;font-size:13px}
-#error{display:none;color:#b44e4e;margin-top:14px;line-height:1.45}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f7f3ed}
+iframe{display:block;width:100%;height:100%;border:0}
 </style>
 </head>
 <body>
-<div id="loading"><div class="box"><strong>Opening your perfume shelf…</strong><span>Loading your collection and cloud account.</span><div id="error"></div></div></div>
-<script>
-(async()=>{
-  const RAW='https://raw.githubusercontent.com/srajalpcm/perfume-collection/9b1d0b969e23979797aa7351dcd04187026dbd3b/index.html';
-  const errorEl=document.getElementById('error');
-  try{
-    const r=await fetch(RAW,{cache:'no-store'});
-    if(!r.ok) throw new Error('Could not load the stable app shell ('+r.status+').');
-    let html=await r.text();
-    html=html.replace(/<script src="\.\/edit-fix\.js\?v=[^\"]+"><\/script>/g,'');
-    html=html.replace(/<\/body>/i,'<script src="./edit-fix.js?v=3"></script>\n</body>');
-    document.open();document.write(html);document.close();
-  }catch(e){
-    errorEl.style.display='block';
-    errorEl.textContent='Unable to open the collection. '+(e.message||e);
-  }
-})();
-</script>
+<iframe title="My Perfume Collection" src="https://cdn.jsdelivr.net/gh/srajalpcm/perfume-collection@9b1d0b969e23979797aa7351dcd04187026dbd3b/index.html"></iframe>
 </body>
 </html>
