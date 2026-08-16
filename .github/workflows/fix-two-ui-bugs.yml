@@ -1,0 +1,41 @@
+name: Fix two UI bugs
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix image stacking and edit action
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = '.card-chip{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap}'
+          new = '.card-chip{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;z-index:20;pointer-events:none}.card-chip .chip{position:relative;z-index:21}'
+          if old not in s:
+              raise SystemExit('Could not find card-chip CSS')
+          s = s.replace(old, new, 1)
+
+          old2 = "$('apiKey').value=localStorage.getItem('fragellaKey')||'';updateCost();go('add')}"
+          new2 = "updateCost();go('add')}"
+          if old2 not in s:
+              raise SystemExit('Could not find editPerfume API key line')
+          s = s.replace(old2, new2, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes needed'; exit 0; fi
+          git commit -m 'Fix image layering and edit button [skip ci]'
+          git push
