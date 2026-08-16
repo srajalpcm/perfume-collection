@@ -1,0 +1,43 @@
+name: Fix add and edit flow
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix add and edit behavior
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace("onclick=\"go('add')\"", "onclick=\"startAdd()\"")
+          marker = "function resetForm(){"
+          if "function startAdd(){" not in s:
+              if marker not in s:
+                  raise SystemExit('resetForm marker not found')
+              s = s.replace(marker, "function startAdd(){resetForm();go('add')}\n" + marker, 1)
+          old = "['name','brand','type','occasion','cloneOf','imageUrl','quantity','quantityRemaining','year','price','rating','topNotes','heartNotes','baseNotes','accords','sourceUrl','notes']"
+          new = "['name','brand','type','occasion','cloneOf','imageUrl','quantity','quantityRemaining','year','price','rating','topNotes','heartNotes','baseNotes','accords','notes']"
+          if old not in s:
+              raise SystemExit('edit field list not found')
+          s = s.replace(old, new, 1)
+          old2 = "$('apiKey').value=localStorage.getItem('fragellaKey')||'';updateCost();go('add')}"
+          new2 = "updateCost();go('add')}"
+          if old2 in s:
+              s = s.replace(old2, new2, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes needed'; exit 0; fi
+          git commit -m 'Fix add and edit perfume flows [skip ci]'
+          git push
