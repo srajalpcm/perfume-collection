@@ -37,9 +37,21 @@
     `;document.head.appendChild(s);
   }
 
+  function set(id,val){const e=$(id);if(e)e.textContent=val}
+
+  function renderOverview(){
+    const el=$('sourceOverview');if(!el||!Array.isArray(window.perfumes))return;
+    const rows=SOURCES.slice(1).map(src=>{
+      const a=window.perfumes.filter(p=>String(p.type||'').trim().toLowerCase()===src.toLowerCase());
+      return {src,a,spend:a.reduce((s,p)=>s+n(p.price),0),rem:a.reduce((s,p)=>s+n(p.quantityRemaining),0)};
+    });
+    el.innerHTML=rows.map(x=>`<div class="source-card${selected===x.src?' active':''}${x.a.length?'':' source-empty'}" data-source-card="${esc(x.src)}"><div class="sc-label">${esc(x.src)}</div><div class="sc-count">${x.a.length}</div><div class="sc-meta">${money(x.spend)} invested · ${x.rem} ml left</div></div>`).join('');
+    el.querySelectorAll('[data-source-card]').forEach(c=>c.addEventListener('click',()=>{selected=c.dataset.sourceCard;update();}));
+  }
+
   function ensureUI(){
     const stats=$('dCount')?.closest('.stats');
-    if(!stats)return;
+    if(!stats)return false;
     let wrap=$('sourceFilterWrap');
     if(!wrap){
       wrap=document.createElement('div');wrap.id='sourceFilterWrap';wrap.className='source-filter-wrap';
@@ -47,43 +59,32 @@
       stats.parentNode.insertBefore(wrap,stats);
       wrap.querySelectorAll('[data-source-filter]').forEach(b=>b.addEventListener('click',()=>{selected=b.dataset.sourceFilter;update();}));
     }
-    renderOverview();
+    return true;
   }
 
-  function renderOverview(){
-    const el=$('sourceOverview');if(!el||!Array.isArray(window.perfumes))return;
-    const rows=SOURCES.slice(1).map(src=>{
-      const a=window.perfumes.filter(p=>String(p.type||'').trim().toLowerCase()===src.toLowerCase());
-      const spend=a.reduce((s,p)=>s+n(p.price),0);
-      const rem=a.reduce((s,p)=>s+n(p.quantityRemaining),0);
-      return {src,a,spend,rem};
-    });
-    el.innerHTML=rows.map(x=>`<div class="source-card${selected===x.src?' active':''}${x.a.length?'':' source-empty'}" data-source-card="${esc(x.src)}"><div class="sc-label">${esc(x.src)}</div><div class="sc-count">${x.a.length}</div><div class="sc-meta">${money(x.spend)} invested · ${x.rem} ml left</div></div>`).join('');
-    el.querySelectorAll('[data-source-card]').forEach(c=>c.addEventListener('click',()=>{selected=c.dataset.sourceCard;update();}));
-  }
-
-  function set(id,val){const e=$(id);if(e)e.textContent=val}
   function update(){
-    ensureUI();
-    const data=filtered(), all=window.perfumes||[];
+    if(!ensureUI())return;
+    const data=filtered();
     document.querySelectorAll('[data-source-filter]').forEach(b=>b.classList.toggle('active',b.dataset.sourceFilter===selected));
     set('sourceFilterSub',selected==='All'?'Showing your full collection':`Showing ${data.length} ${selected.toLowerCase()} perfume${data.length===1?'':'s'}`);
+
     const spend=data.reduce((s,p)=>s+n(p.price),0);
     const rem=data.reduce((s,p)=>s+n(p.quantityRemaining),0);
     const total=data.reduce((s,p)=>s+n(p.quantity),0);
     const shelf=data.reduce((s,p)=>s+(n(p.quantity)>0?n(p.price)*Math.max(0,Math.min(1,n(p.quantityRemaining)/n(p.quantity))):0),0);
     const brands=new Set(data.map(p=>p.brand).filter(Boolean));
     const low=data.filter(p=>n(p.quantity)>0&&n(p.quantityRemaining)/n(p.quantity)<=.25).length;
-    const avg=data.length?spend/data.length:0;
-    const avg100=total?spend/total*100:0;
-    set('dCount',data.length);set('dSpend',money(spend));set('dRemaining',`${rem} ml`);set('dShelfValue',money(shelf));set('dAvgBottle',money(avg));set('dAvg100',money(avg100));set('dBrands',brands.size);set('dLowStock',low);
+    set('dCount',data.length);set('dSpend',money(spend));set('dRemaining',`${rem} ml`);set('dShelfValue',money(shelf));set('dAvgBottle',money(data.length?spend/data.length:0));set('dAvg100',money(total?spend/total*100:0));set('dBrands',brands.size);set('dLowStock',low);
+
     const occ={};data.forEach(p=>{const k=p.occasion||'Not set';occ[k]=(occ[k]||0)+1});
     const topOcc=Object.entries(occ).filter(x=>x[0]!=='Not set').sort((a,b)=>b[1]-a[1])[0];
-    const byBrand={};data.forEach(p=>{const k=p.brand||'Unknown';byBrand[k]=(byBrand[k]||0)+1});
-    const topBrand=Object.entries(byBrand).sort((a,b)=>b[1]-a[1])[0];
+    const bb={};data.forEach(p=>{const k=p.brand||'Unknown';bb[k]=(bb[k]||0)+1});
+    const topBrand=Object.entries(bb).sort((a,b)=>b[1]-a[1])[0];
     const largest=[...data].sort((a,b)=>n(b.quantity)-n(a.quantity))[0];
-    const year=new Date().getFullYear();const yearSpend=data.filter(p=>Number(p.year)===year).reduce((s,p)=>s+n(p.price),0);
+    const year=new Date().getFullYear();
+    const yearSpend=data.filter(p=>Number(p.year)===year).reduce((s,p)=>s+n(p.price),0);
     set('xTopBrand',topBrand?topBrand[0]:'—');set('xTopBrandSub',topBrand?`${topBrand[1]} bottle${topBrand[1]===1?'':'s'}`:'Most bottles');set('xTopOccasion',topOcc?topOcc[0]:'—');set('xTopOccasionSub',topOcc?`${topOcc[1]} bottle${topOcc[1]===1?'':'s'}`:'Most represented');set('xYearSpend',money(yearSpend));set('xLargest',largest?`${n(largest.quantity)} ml`:'—');set('xLargestSub',largest?largest.name:'Bottle size');
+
     const full=data.filter(p=>n(p.quantity)>0&&n(p.quantityRemaining)/n(p.quantity)>=.75).length;
     const used=data.length-full;
     const fill=data.length?Math.round(rem/Math.max(1,total)*100):0;
@@ -92,28 +93,18 @@
     renderOverview();
   }
 
-  function update(){
-    ensureUI();
-    const data=filtered();
-    document.querySelectorAll('[data-source-filter]').forEach(b=>b.classList.toggle('active',b.dataset.sourceFilter===selected));
-    set('sourceFilterSub',selected==='All'?'Showing your full collection':`Showing ${data.length} ${selected.toLowerCase()} perfume${data.length===1?'':'s'}`);
-    const spend=data.reduce((s,p)=>s+n(p.price),0),rem=data.reduce((s,p)=>s+n(p.quantityRemaining),0),total=data.reduce((s,p)=>s+n(p.quantity),0),shelf=data.reduce((s,p)=>s+(n(p.quantity)>0?n(p.price)*Math.max(0,Math.min(1,n(p.quantityRemaining)/n(p.quantity))):0),0),brands=new Set(data.map(p=>p.brand).filter(Boolean)),low=data.filter(p=>n(p.quantity)>0&&n(p.quantityRemaining)/n(p.quantity)<=.25).length;
-    set('dCount',data.length);set('dSpend',money(spend));set('dRemaining',`${rem} ml`);set('dShelfValue',money(shelf));set('dAvgBottle',money(data.length?spend/data.length:0));set('dAvg100',money(total?spend/total*100:0));set('dBrands',brands.size);set('dLowStock',low);
-    const occ={};data.forEach(p=>{const k=p.occasion||'Not set';occ[k]=(occ[k]||0)+1});const topOcc=Object.entries(occ).filter(x=>x[0]!=='Not set').sort((a,b)=>b[1]-a[1])[0];
-    const bb={};data.forEach(p=>{const k=p.brand||'Unknown';bb[k]=(bb[k]||0)+1});const topBrand=Object.entries(bb).sort((a,b)=>b[1]-a[1])[0];const largest=[...data].sort((a,b)=>n(b.quantity)-n(a.quantity))[0];
-    set('xTopBrand',topBrand?topBrand[0]:'—');set('xTopBrandSub',topBrand?`${topBrand[1]} bottle${topBrand[1]===1?'':'s'}`:'Most bottles');set('xTopOccasion',topOcc?topOcc[0]:'—');set('xTopOccasionSub',topOcc?`${topOcc[1]} bottle${topOcc[1]===1?'':'s'}`:'Most represented');
-    const year=new Date().getFullYear();set('xYearSpend',money(data.filter(p=>Number(p.year)===year).reduce((s,p)=>s+n(p.price),0)));set('xLargest',largest?`${n(largest.quantity)} ml`:'—');set('xLargestSub',largest?largest.name:'Bottle size');
-    const full=data.filter(p=>n(p.quantity)>0&&n(p.quantityRemaining)/n(p.quantity)>=.75).length,used=data.length-full,fill=data.length?Math.round(rem/Math.max(1,total)*100):0;set('healthText',data.length?`${fill}% of original volume remains`:'No bottles in this source');set('fullLabel',`${full} mostly full`);set('usedLabel',`${used} in rotation`);set('lowLabel',`${low} low stock`);const hf=$('healthFill');if(hf)hf.style.width=Math.max(0,Math.min(100,fill))+'%';renderOverview();
-  }
-
   function hook(){
     injectStyle();
-    if(typeof window.renderDashboard==='function'&&!window.renderDashboard.__sourceWrapped){
-      const original=window.renderDashboard;
-      const wrapped=function(){original.apply(this,arguments);setTimeout(()=>{ensureUI();update();},0)};
-      wrapped.__sourceWrapped=true;window.renderDashboard=wrapped;
-    }
-    setTimeout(()=>{ensureUI();update();},250);
+    const install=()=>{
+      if(typeof window.renderDashboard==='function'&&!window.renderDashboard.__sourceWrapped){
+        const original=window.renderDashboard;
+        const wrapped=function(){original.apply(this,arguments);setTimeout(update,0)};
+        wrapped.__sourceWrapped=true;window.renderDashboard=wrapped;
+      }
+      update();
+    };
+    setTimeout(install,250);
+    setTimeout(install,1000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
 })();
