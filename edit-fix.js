@@ -4,17 +4,11 @@ const $=id=>document.getElementById(id);
 const n=v=>{const x=Number(v);return Number.isFinite(x)?x:0};
 const money=v=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n(v));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-/* The main app keeps perfumes in a top-level lexical variable (not window.perfumes).
-   Global eval can access that same global lexical environment, so the enhancement
-   reads/writes the real collection instead of creating an empty second collection. */
 function getPerfumes(){try{const p=window.eval('perfumes');return Array.isArray(p)?p:[]}catch(e){console.error('Could not access collection',e);return[]}}
 function setPerfumes(v){try{window.__perfumeBridgeValue=v;window.eval('perfumes=window.__perfumeBridgeValue');delete window.__perfumeBridgeValue}catch(e){console.error('Could not update collection',e)}}
-
 window.startAdd=function(){if(typeof resetForm==='function')resetForm();try{window.eval('editingId=null')}catch(e){}if($('formTitle'))$('formTitle').textContent='Add a perfume';if($('saveBtn'))$('saveBtn').textContent='Save perfume';if(typeof go==='function')go('add')};
 window.editPerfume=function(id){try{const list=getPerfumes(),p=list.find(x=>String(x.id)===String(id));if(!p){if(typeof toast==='function')toast('Perfume not found','error');return}window.__perfumeBridgeId=p.id;window.eval('editingId=window.__perfumeBridgeId');delete window.__perfumeBridgeId;['name','brand','type','occasion','cloneOf','imageUrl','quantity','quantityRemaining','year','price','rating','topNotes','heartNotes','baseNotes','accords','sourceUrl','notes'].forEach(k=>{const el=$(k);if(el)el.value=p[k]??''});if($('formTitle'))$('formTitle').textContent='Edit perfume';if($('saveBtn'))$('saveBtn').textContent='Update perfume';if(typeof updateCost==='function')updateCost();if(typeof go==='function')go('add')}catch(e){console.error(e);if(typeof toast==='function')toast('Could not open perfume for editing.','error')}};
 window.savePerfume=async function(e){e.preventDefault();const form=$('perfumeForm');if(!form||!form.reportValidity())return;const q=n($('quantity')?.value),r=n($('quantityRemaining')?.value);if(r>q){toast('Remaining cannot exceed bottle size','error');return}const list=getPerfumes();let editing=false;try{editing=!!window.eval('editingId')}catch(e){}let id=editing?window.eval('editingId'):crypto.randomUUID();const p={id,name:($('name')?.value||'').trim(),brand:($('brand')?.value||'').trim(),type:$('type')?.value||'',profile:'',occasion:$('occasion')?.value||'',cloneOf:($('cloneOf')?.value||'').trim(),imageUrl:($('imageUrl')?.value||'').trim(),quantity:q,quantityRemaining:r,year:parseInt($('year')?.value||'',10)||'',price:n($('price')?.value),rating:$('rating')?.value||'',topNotes:($('topNotes')?.value||'').trim(),heartNotes:($('heartNotes')?.value||'').trim(),baseNotes:($('baseNotes')?.value||'').trim(),accords:($('accords')?.value||'').trim(),sourceUrl:($('sourceUrl')?.value||'').trim(),notes:($('notes')?.value||'').trim()};const old=list.slice();setPerfumes(editing?list.map(x=>String(x.id)===String(id)?{...x,...p}:x):[...list,p]);try{await saveData();toast(editing?'Perfume updated':'Perfume added','success');if(typeof resetForm==='function')resetForm();if(typeof go==='function')go('collection')}catch(err){setPerfumes(old);toast('Could not save: '+(err.message||err),'error')}};
-
 const SOURCES=['All','Designer','Niche','Indian','Middle Eastern'];
 let sourceFilter='All';
 function sourceOf(p){return String(p.type||'').trim()||'Not set'}
@@ -29,3 +23,4 @@ function css(){if($('dashboard-source-css'))return;const s=document.createElemen
 const oldRender=window.renderDashboard;window.renderDashboard=function(){if(typeof oldRender==='function')oldRender();ensureSourceUI();refreshDashboard()};
 css();setTimeout(()=>{try{ensureSourceUI();refreshDashboard()}catch(e){console.error('Dashboard enhancement',e)}},0);window.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{ensureSourceUI();refreshDashboard()},100));
 })();
+const wt=document.createElement('script');wt.src='weather-time.js?v=20260817-1';document.head.appendChild(wt);
