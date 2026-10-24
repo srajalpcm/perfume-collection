@@ -36,6 +36,13 @@ function fixMobileBottomClearance(){
   document.head.appendChild(s);
 }
 fixMobileBottomClearance();
+// Load the Scent of the Day picker from its standalone script.
+function loadOccasionWheel(){
+  if(document.querySelector('script[data-occasion-wheel]'))return;
+  const s=document.createElement('script');s.src='./occasion-wheel.js?v=5';s.dataset.occasionWheel='true';s.defer=true;
+  document.body.appendChild(s);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadOccasionWheel,{once:true});else loadOccasionWheel();
 setTimeout(()=>{try{ensureSourceUI();refreshDashboard()}catch(e){console.error('Dashboard enhancement',e)}},0);
 window.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{ensureSourceUI();refreshDashboard();fixMobileBottomClearance()},100));
 })();
